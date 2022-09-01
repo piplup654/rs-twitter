@@ -11,18 +11,9 @@ impl Client {
         // empt value for tweet_fields and user_fields
         let empty_vec: &Vec<String> = &vec!["".to_string()];
         //-------------------------------------------
-        let expansions = match &params.expansions {
-            Some(val) => val,
-            None => empty_vec,
-        };
-        let tweet_fields = match &params.tweet_fields {
-            Some(val) => val,
-            None => empty_vec,
-        };
-        let user_fields = match &params.user_fields {
-            Some(val) => val,
-            None => empty_vec,
-        };
+        let expansions = &params.expansions.as_ref().unwrap_or_else(|| &empty_vec);
+        let tweet_fields = &params.tweet_fields.as_ref().unwrap_or_else(|| &empty_vec);
+        let user_fields = &params.user_fields.as_ref().unwrap_or_else(|| &empty_vec);
         let query_params = QPGetUsersByUsernames {
             usernames: params.usernames.join(","),
             expansions: expansions.join(",")
@@ -33,8 +24,9 @@ impl Client {
         let user_request = reqwest_client.get(request_url)
             .header("Authorization", bearer_header)
             .query(&query_params)
-            .send().await?.text().await?;
-        let resp_jsonified: Value = serde_json::from_str(&user_request)?;
+            .send().await.expect("Error while trying to get response from get_users_by_usernames endpoint");
+        let resp_textified = user_request.text().await.expect("Error while trying to textify response");
+        let resp_jsonified: Value = serde_json::from_str(&resp_textified).expect("Error while trying to jsonify response");
         Ok(resp_jsonified)
     }
 }

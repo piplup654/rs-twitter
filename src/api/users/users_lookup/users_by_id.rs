@@ -2,27 +2,16 @@ use crate::authentication::Client;
 use serde_json::value::Value;
 use std::collections::HashMap;
 use super::params_structs::{PGetUsersByIds, PGetUsersByIdsBuilder, QPGetUsersByIds};
+const USERS_BY_ID_ENDPOINT: &str  = "https://api.twitter.com/2/users";
 
 impl Client {
     pub async fn get_users_by_ids(&self, params: &PGetUsersByIds) -> Result<Value, Box<dyn std::error::Error>> {
-        let request_url = String::from("https://api.twitter.com/2/users");
         let bearer_header = format!("Bearer {}", &self.bearer_token[..]);
         let reqwest_client = reqwest::Client::new();
-        // empt value for tweet_fields and user_fields
-        let empty_vec: &Vec<String> = &vec![String::from("")];
-        //-------------------------------------------
-        let expansions = match &params.expansions {
-            Some(val) => val,
-            None => empty_vec,
-        };
-        let tweet_fields = match &params.tweet_fields {
-            Some(val) => val,
-            None => empty_vec,
-        };
-        let user_fields = match &params.user_fields {
-            Some(val) => val,
-            None => empty_vec,
-        };
+        let empty_vec: Vec<String> = vec![String::from("")];
+        let expansions = &params.expansions.as_ref().unwrap_or_else(|| &empty_vec);
+        let tweet_fields = &params.tweet_fields.as_ref().unwrap_or_else(|| &empty_vec);
+        let user_fields = &params.user_fields.as_ref().unwrap_or_else(|| &empty_vec);
         let query_params = QPGetUsersByIds {
             ids: params.ids.join(" "),
             expansions: expansions.join(",")
@@ -30,12 +19,13 @@ impl Client {
         let mut query_params_2 = HashMap::new();
         query_params_2.insert("user.fields", user_fields.join(","));
         query_params_2.insert("tweet.fields", tweet_fields.join(","));
-        let user_request = reqwest_client.get(request_url)
-            .header("Authorization", bearer_header)
+        let user_request = reqwest_client.get(USERS_BY_ID_ENDPOINT)
+            .header(reqwest::header::AUTHORIZATION, bearer_header)
             .query(&query_params)
             .query(&query_params_2)
-            .send().await?.text().await?;
-        let resp_jsonified: Value = serde_json::from_str(&user_request)?;
+            .send().await.expect("Error while trying to get response from get_users_by_id endpoint");
+        let resp_texstified = user_request.text().await.expect("Error while trying to textify response");
+        let resp_jsonified: Value = serde_json::from_str(&resp_texstified).expect("Error while trying to jsonify response");
         Ok(resp_jsonified)
     }
 }
