@@ -24,8 +24,8 @@ impl Client {
             .query(&query_params)
             .query(&query_params_2)
             .send().await.expect("Error while trying to get response from get_users_by_id endpoint");
-        let resp_texstified = user_request.text().await.expect("Error while trying to textify response");
-        let resp_jsonified: Value = serde_json::from_str(&resp_texstified).expect("Error while trying to jsonify response");
+        let resp_textified = user_request.text().await.expect("Error while trying to textify response");
+        let resp_jsonified: Value = serde_json::from_str(&resp_textified).expect("Error while trying to jsonify response");
         Ok(resp_jsonified)
     }
 }
