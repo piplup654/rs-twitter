@@ -5,13 +5,13 @@ use super::params_structs::{PGetUsersByIds, PGetUsersByIdsBuilder, QPGetUsersByI
 const USERS_BY_ID_ENDPOINT: &str  = "https://api.twitter.com/2/users";
 
 impl Client {
-    pub async fn get_users_by_ids(&self, params: &PGetUsersByIds) -> Result<Value, Box<dyn std::error::Error>> {
+    pub async fn get_users_by_ids(&self, params: &PGetUsersByIds) -> Result<Value, reqwest::Error> {
         let bearer_header = format!("Bearer {}", &self.bearer_token[..]);
         let reqwest_client = reqwest::Client::new();
         let empty_vec: Vec<String> = vec![String::from("")];
-        let expansions = &params.expansions.as_ref().unwrap_or_else(|| &empty_vec);
-        let tweet_fields = &params.tweet_fields.as_ref().unwrap_or_else(|| &empty_vec);
-        let user_fields = &params.user_fields.as_ref().unwrap_or_else(|| &empty_vec);
+        let expansions = params.expansions.as_ref().unwrap_or_else(|| &empty_vec);
+        let tweet_fields = params.tweet_fields.as_ref().unwrap_or_else(|| &empty_vec);
+        let user_fields = params.user_fields.as_ref().unwrap_or_else(|| &empty_vec);
         let query_params = QPGetUsersByIds {
             ids: params.ids.join(" "),
             expansions: expansions.join(",")
@@ -19,11 +19,14 @@ impl Client {
         let mut query_params_2 = HashMap::new();
         query_params_2.insert("user.fields", user_fields.join(","));
         query_params_2.insert("tweet.fields", tweet_fields.join(","));
-        let user_request = reqwest_client.get(USERS_BY_ID_ENDPOINT)
+        let user_request = match reqwest_client.get(USERS_BY_ID_ENDPOINT)
             .header(reqwest::header::AUTHORIZATION, bearer_header)
             .query(&query_params)
             .query(&query_params_2)
-            .send().await.expect("Error while trying to get response from get_users_by_id endpoint");
+            .send().await {
+                Ok(resp) => resp,
+                Err(e) => return Err(e),
+        };
         let resp_textified = user_request.text().await.expect("Error while trying to textify response");
         let resp_jsonified: Value = serde_json::from_str(&resp_textified).expect("Error while trying to jsonify response");
         Ok(resp_jsonified)

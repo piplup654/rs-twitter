@@ -4,7 +4,7 @@ use super::params_structs::{PGetUsersByUsernames, QPGetUsersByUsernames, PGetUse
 use std::collections::HashMap;
 
 impl Client {
-    pub async fn get_users_by_usernames(&self, params: &PGetUsersByUsernames) -> Result<Value, Box<dyn std::error::Error>> {
+    pub async fn get_users_by_usernames(&self, params: &PGetUsersByUsernames) -> Result<Value, reqwest::Error> {
         let request_url = String::from("https://api.twitter.com/2/users/by");
         let bearer_header = format!("Bearer {}", &self.bearer_token[..]);
         let reqwest_client = reqwest::Client::new();
@@ -21,10 +21,13 @@ impl Client {
         let mut query_params_2 = HashMap::new();
         query_params_2.insert("user.fields", user_fields.join(","));
         query_params_2.insert("tweet.fields", tweet_fields.join(","));
-        let user_request = reqwest_client.get(request_url)
+        let user_request = match reqwest_client.get(request_url)
             .header("Authorization", bearer_header)
             .query(&query_params)
-            .send().await.expect("Error while trying to get response from get_users_by_usernames endpoint");
+            .send().await {
+                Ok(resp) => resp,
+                Err(e) => return Err(e),
+        };
         let resp_textified = user_request.text().await.expect("Error while trying to textify response");
         let resp_jsonified: Value = serde_json::from_str(&resp_textified).expect("Error while trying to jsonify response");
         Ok(resp_jsonified)
@@ -44,9 +47,8 @@ mod tests {
         let params = PGetUsersByUsernamesBuilder::default()
             .usernames(usernames.clone())
             .build()?;
-        let resp = client.get_users_by_usernames(&params).await?;
-        println!("{}", resp);
-        assert_eq!(usernames[0], resp["data"][0]["username"]);
+        let resp = client.get_users_by_usernames(&params).await;
+        assert!(resp.is_ok());
         Ok(())
     }
     #[tokio::test]
@@ -60,8 +62,8 @@ mod tests {
             .usernames(usernames.clone())
             .tweet_fields(tweet_fields)
             .build()?;
-        let resp = client.get_users_by_usernames(&params).await?;
-        assert_eq!(usernames[0], resp["data"][0]["username"]);
+        let resp = client.get_users_by_usernames(&params).await;
+        assert!(resp.is_ok());
         Ok(())
     }
     #[tokio::test]
@@ -79,8 +81,8 @@ mod tests {
             .expansions(expansions)
             .user_fields(user_fields)
             .build()?;
-        let resp = client.get_users_by_usernames(&params).await?;
-        assert_eq!(usernames[0], resp["data"][0]["username"]);
+        let resp = client.get_users_by_usernames(&params).await;
+        assert!(resp.is_ok());
         Ok(())
     }
 }
