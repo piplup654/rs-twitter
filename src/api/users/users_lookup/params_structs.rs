@@ -18,7 +18,7 @@ pub struct QPGetUsersByIds {
     pub ids: String,
     pub expansions: String,
 }
-// By IDs ---------------------------
+//-----------------------------------
 
 // By Username-----------------------
 #[derive(Builder, Default, Debug)]
@@ -37,3 +37,4 @@ pub struct QPGetUsersByUsernames {
     pub usernames: String,
     pub expansions: String,
 }
+//-----------------------------------
